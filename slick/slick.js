@@ -13,6 +13,8 @@
     Repo: http://github.com/kenwheeler/slick
   Issues: http://github.com/kenwheeler/slick/issues
 
+  UPDATE: Forked and added display of list and control in a vertical format.
+
  */
 /* global window, document, define, jQuery, setInterval, clearInterval */
 (function(factory) {
@@ -83,10 +85,12 @@
                 useCSS: true,
                 useTransform: false,
                 variableWidth: false,
+                variableHeight: false,
                 vertical: false,
                 verticalSwiping: false,
                 waitForAnimate: true,
-                zIndex: 1000
+                zIndex: 1000,
+                orientation: 'horizontal'
             };
 
             _.initials = {
@@ -105,6 +109,7 @@
                 $prevArrow: null,
                 slideCount: null,
                 slideWidth: null,
+                slideHeight: null,
                 $slideTrack: null,
                 $slides: null,
                 sliding: false,
@@ -136,6 +141,7 @@
             _.transitionType = null;
             _.visibilityChange = 'visibilitychange';
             _.windowWidth = 0;
+            _.windowHeight = 0;
             _.windowTimer = null;
 
             dataSettings = $(element).data('slick') || {};
@@ -232,6 +238,7 @@
         var _ = this;
         if (_.options.slidesToShow === 1 && _.options.adaptiveHeight === true && _.options.vertical === false) {
             var targetHeight = _.$slides.eq(_.currentSlide).outerHeight(true);
+            console.log('[animateHeight] height = ', targetHeight);
             _.$list.animate({
                 height: targetHeight
             }, _.options.speed);
@@ -536,7 +543,7 @@
 
     Slick.prototype.buildRows = function() {
 
-        var _ = this, a, b, c, newSlides, numOfSlides, originalSlides,slidesPerSection;
+        var _ = this, a, b, c, newSlides, numOfSlides, originalSlides,slidesPerSection, slideStyles;
 
         newSlides = document.createDocumentFragment();
         originalSlides = _.$slider.children();
@@ -564,11 +571,21 @@
             }
 
             _.$slider.html(newSlides);
-            _.$slider.children().children().children()
-                .css({
+            if (_.options.orientation === 'vertical') {
+                slideStyles = {
+                    'height':(100 / _.options.slidesPerRow) + '%',
+                    'display': 'block'
+                };
+            }
+            else {
+                slideStyles = {
                     'width':(100 / _.options.slidesPerRow) + '%',
                     'display': 'inline-block'
-                });
+                };
+            }
+            _.$slider.children().children().children()
+                .css(slideStyles);
+            console.log('slideStyles = ', slideStyles);
 
         }
 
@@ -577,16 +594,21 @@
     Slick.prototype.checkResponsive = function(initial, forceUpdate) {
 
         var _ = this,
-            breakpoint, targetBreakpoint, respondToWidth, triggerBreakpoint = false;
+            breakpoint, targetBreakpoint, respondToWidth, respondToHeight, triggerBreakpoint = false;
         var sliderWidth = _.$slider.width();
+        var sliderHeight = _.$slider.height();
         var windowWidth = window.innerWidth || $(window).width();
+        var windowHeight = window.innerHeight || $(window).height();
 
         if (_.respondTo === 'window') {
             respondToWidth = windowWidth;
+            respondToHeight = windowHeight;
         } else if (_.respondTo === 'slider') {
             respondToWidth = sliderWidth;
+            respondToHeight = sliderHeight;
         } else if (_.respondTo === 'min') {
             respondToWidth = Math.min(windowWidth, sliderWidth);
+            respondToHeight = Math.min(windowHeight, sliderHeight);
         }
 
         if ( _.options.responsive &&
@@ -598,11 +620,13 @@
             for (breakpoint in _.breakpoints) {
                 if (_.breakpoints.hasOwnProperty(breakpoint)) {
                     if (_.originalSettings.mobileFirst === false) {
-                        if (respondToWidth < _.breakpoints[breakpoint]) {
+                        if ((_.options.orientation === 'vertical' && respondToHeight < _.breakpoints[breakpoint]) ||
+                          (_.options.orientation === 'horizontal' && respondToWidth < _.breakpoints[breakpoint])) {
                             targetBreakpoint = _.breakpoints[breakpoint];
                         }
                     } else {
-                        if (respondToWidth > _.breakpoints[breakpoint]) {
+                        if ((_.options.orientation === 'vertical' && respondToHeight > _.breakpoints[breakpoint]) ||
+                          (_.options.orientation === 'horizontal' && respondToWidth > _.breakpoints[breakpoint])) {
                             targetBreakpoint = _.breakpoints[breakpoint];
                         }
                     }
@@ -1660,10 +1684,18 @@
 
         var _ = this;
 
-        if ($(window).width() !== _.windowWidth) {
+        if (_.options.orientation === 'horizontal' && $(window).width() !== _.windowWidth) {
             clearTimeout(_.windowDelay);
             _.windowDelay = window.setTimeout(function() {
                 _.windowWidth = $(window).width();
+                _.checkResponsive();
+                if( !_.unslicked ) { _.setPosition(); }
+            }, 50);
+        }
+        else if (_.options.orientation === 'vertical' && $(window).height() !== _.windowHeight) {
+            clearTimeout(_.windowDelay);
+            _.windowDelay = window.setTimeout(function() {
+                _.windowHeight = $(window).height();
                 _.checkResponsive();
                 if( !_.unslicked ) { _.setPosition(); }
             }, 50);
@@ -1738,17 +1770,19 @@
 
         var _ = this;
 
-        if (_.options.vertical === false) {
-            if (_.options.centerMode === true) {
-                _.$list.css({
-                    padding: ('0px ' + _.options.centerPadding)
-                });
-            }
-        } else {
+        if (_.options.vertical === true || _.options.orientation === 'vertical') {
             _.$list.height(_.$slides.first().outerHeight(true) * _.options.slidesToShow);
+            console.log('[setDimensions] height = ', _.$slides.first().outerHeight(true) * _.options.slidesToShow);
             if (_.options.centerMode === true) {
                 _.$list.css({
                     padding: (_.options.centerPadding + ' 0px')
+                });
+            }
+        }
+        else if (_.options.vertical === false) {
+            if (_.options.centerMode === true) {
+                _.$list.css({
+                    padding: ('0px ' + _.options.centerPadding)
                 });
             }
         }
@@ -1757,19 +1791,30 @@
         _.listHeight = _.$list.height();
 
 
-        if (_.options.vertical === false && _.options.variableWidth === false) {
-            _.slideWidth = Math.ceil(_.listWidth / _.options.slidesToShow);
-            _.$slideTrack.width(Math.ceil((_.slideWidth * _.$slideTrack.children('.slick-slide').length)));
+        if (_.options.orientation === 'vertical') {
+            //_.$slideTrack.height(Math.ceil((_.$slides.first().outerHeight(true) * _.$slideTrack.children('.slick-slide').length)));
+            _.slideHeight = Math.floor(_.$slider.height() / _.options.slidesToShow);
 
-        } else if (_.options.variableWidth === true) {
-            _.$slideTrack.width(5000 * _.slideCount);
-        } else {
-            _.slideWidth = Math.ceil(_.listWidth);
-            _.$slideTrack.height(Math.ceil((_.$slides.first().outerHeight(true) * _.$slideTrack.children('.slick-slide').length)));
+            var offset = _.$slides.first().outerHeight(true) - _.$slides.first().height();
+            _.$slideTrack.children('.slick-slide').height(_.slideHeight - offset);
+            console.log('[setDimensions] v slideHeight = ', _.slideHeight);
         }
+        else {
+            if (_.options.vertical === false && _.options.variableWidth === false) {
+                _.slideWidth = Math.ceil(_.listWidth / _.options.slidesToShow);
+                _.$slideTrack.width(Math.ceil((_.slideWidth * _.$slideTrack.children('.slick-slide').length)));
 
-        var offset = _.$slides.first().outerWidth(true) - _.$slides.first().width();
-        if (_.options.variableWidth === false) _.$slideTrack.children('.slick-slide').width(_.slideWidth - offset);
+            } else if (_.options.variableWidth === true) {
+                _.$slideTrack.width(5000 * _.slideCount);
+            } else {
+                _.slideWidth = Math.ceil(_.slideWidth);
+                _.$slideTrack.height(Math.ceil((_.$slides.first().outerHeight(true) * _.$slideTrack.children('.slick-slide').length)));
+                console.log('[setDimensions] h slideHeight = ', Math.ceil((_.$slides.first().outerHeight(true) * _.$slideTrack.children('.slick-slide').length)));
+            }
+
+            var offset = _.$slides.first().outerWidth(true) - _.$slides.first().width();
+            if (_.options.variableWidth === false) _.$slideTrack.children('.slick-slide').width(_.slideWidth - offset);
+        }
 
     };
 
@@ -1810,9 +1855,13 @@
 
         var _ = this;
 
-        if (_.options.slidesToShow === 1 && _.options.adaptiveHeight === true && _.options.vertical === false) {
+        if (_.options.orientation === 'vertical') {
+            _.$list.css('height', '100%');
+        }
+        else if (_.options.slidesToShow === 1 && _.options.adaptiveHeight === true && _.options.vertical === false) {
             var targetHeight = _.$slides.eq(_.currentSlide).outerHeight(true);
             _.$list.css('height', targetHeight);
+            console.log('[setHeight] height = ', targetHeight);
         }
 
     };
