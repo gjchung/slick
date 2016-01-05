@@ -238,7 +238,6 @@
         var _ = this;
         if (_.options.slidesToShow === 1 && _.options.adaptiveHeight === true && _.options.vertical === false) {
             var targetHeight = _.$slides.eq(_.currentSlide).outerHeight(true);
-            console.log('[animateHeight] height = ', targetHeight);
             _.$list.animate({
                 height: targetHeight
             }, _.options.speed);
@@ -585,7 +584,6 @@
             }
             _.$slider.children().children().children()
                 .css(slideStyles);
-            console.log('slideStyles = ', slideStyles);
 
         }
 
@@ -1772,7 +1770,6 @@
 
         if (_.options.vertical === true || _.options.orientation === 'vertical') {
             _.$list.height(_.$slides.first().outerHeight(true) * _.options.slidesToShow);
-            console.log('[setDimensions] height = ', _.$slides.first().outerHeight(true) * _.options.slidesToShow);
             if (_.options.centerMode === true) {
                 _.$list.css({
                     padding: (_.options.centerPadding + ' 0px')
@@ -1797,7 +1794,6 @@
 
             var offset = _.$slides.first().outerHeight(true) - _.$slides.first().height();
             _.$slideTrack.children('.slick-slide').height(_.slideHeight - offset);
-            console.log('[setDimensions] v slideHeight = ', _.slideHeight);
         }
         else {
             if (_.options.vertical === false && _.options.variableWidth === false) {
@@ -1809,7 +1805,6 @@
             } else {
                 _.slideWidth = Math.ceil(_.slideWidth);
                 _.$slideTrack.height(Math.ceil((_.$slides.first().outerHeight(true) * _.$slideTrack.children('.slick-slide').length)));
-                console.log('[setDimensions] h slideHeight = ', Math.ceil((_.$slides.first().outerHeight(true) * _.$slideTrack.children('.slick-slide').length)));
             }
 
             var offset = _.$slides.first().outerWidth(true) - _.$slides.first().width();
@@ -1861,7 +1856,6 @@
         else if (_.options.slidesToShow === 1 && _.options.adaptiveHeight === true && _.options.vertical === false) {
             var targetHeight = _.$slides.eq(_.currentSlide).outerHeight(true);
             _.$list.css('height', targetHeight);
-            console.log('[setHeight] height = ', targetHeight);
         }
 
     };
